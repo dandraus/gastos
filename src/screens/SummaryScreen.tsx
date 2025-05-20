@@ -5,15 +5,10 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { PieChart, BarChart } from 'react-native-chart-kit';
+import { formatNumber } from '../utils/format';
 
 const screenWidth = Dimensions.get('window').width;
 
-// Formatea número con puntos como separadores de miles y mantiene dos decimales
-const formatNumber = (value: number): string => {
-  const parts = value.toFixed(2).split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return parts.join('.');
-};
 
 export default function SummaryScreen() {
   const [presupuestos, setPresupuestos] = useState([]);
