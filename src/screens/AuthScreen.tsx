@@ -1,12 +1,31 @@
 // src/screens/AuthScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert, Switch } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabaseClient';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const storedEmail = await AsyncStorage.getItem('rememberEmail');
+        const storedPassword = await AsyncStorage.getItem('rememberPassword');
+        if (storedEmail && storedPassword) {
+          setEmail(storedEmail);
+          setPassword(storedPassword);
+          setRememberMe(true);
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    };
+    loadCredentials();
+  }, []);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -17,6 +36,16 @@ export default function AuthScreen() {
     const { error } = isLogin
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password });
+
+    if (!error) {
+      if (rememberMe) {
+        await AsyncStorage.setItem('rememberEmail', email);
+        await AsyncStorage.setItem('rememberPassword', password);
+      } else {
+        await AsyncStorage.removeItem('rememberEmail');
+        await AsyncStorage.removeItem('rememberPassword');
+      }
+    }
 
     if (error) Alert.alert('Error', error.message);
     else Alert.alert('Éxito', isLogin ? 'Sesión iniciada' : 'Registro exitoso');
@@ -40,6 +69,10 @@ export default function AuthScreen() {
         secureTextEntry
         style={styles.input}
       />
+      <View style={styles.rememberContainer}>
+        <Switch value={rememberMe} onValueChange={setRememberMe} />
+        <Text style={styles.rememberLabel}>Recordarme</Text>
+      </View>
       <Button title={isLogin ? 'Ingresar' : 'Registrar'} onPress={handleAuth} />
       <Text
         style={styles.toggle}
@@ -67,6 +100,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 10,
     marginBottom: 12,
+  },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  rememberLabel: {
+    marginLeft: 8,
   },
   toggle: {
     color: 'blue',
