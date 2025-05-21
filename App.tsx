@@ -18,6 +18,7 @@ import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/lib/supabaseClient';
 import { useNavigation } from '@react-navigation/native';
+import { PeriodoProvider } from './src/context/PeriodoContext';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -37,7 +38,6 @@ function BottomTabs({ navigation }) {
           if (route.name === 'Resumen') iconName = 'home';
           else if (route.name === 'Presupuestos') iconName = 'wallet';
           else if (route.name === 'Gastos') iconName = 'receipt';
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -45,7 +45,6 @@ function BottomTabs({ navigation }) {
       <Tab.Screen name="Resumen" component={SummaryScreen} />
       <Tab.Screen name="Presupuestos" component={CreateBudgetScreen} />
       <Tab.Screen name="Gastos" component={CreateExpenseScreen} />
-
     </Tab.Navigator>
   );
 }
@@ -57,21 +56,14 @@ function ConfigScreen() {
 function LogoutScreen({ navigation }) {
   React.useEffect(() => {
     Alert.alert('Cerrar sesión', '¿Estás seguro que querés salir?', [
-      {
-        text: 'Cancelar',
-        onPress: () => navigation.goBack(),
-        style: 'cancel',
-      },
-      {
-        text: 'Sí, salir',
-        onPress: async () => {
+      { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' },
+      { text: 'Sí, salir', onPress: async () => {
           await supabase.auth.signOut();
           navigation.reset({ index: 0, routes: [{ name: 'AuthScreen' }] });
-        },
-      },
+        }
+      }
     ]);
   }, []);
-
   return null;
 }
 
@@ -81,17 +73,19 @@ function MainStack({ user }) {
       screenOptions={({ route }) => ({
         drawerIcon: ({ color, size }) => {
           let iconName = '';
-          if (route.name === 'Inicio') iconName = 'home-outline';
-          else if (route.name === 'Presupuestos') iconName = 'wallet-outline';
-          else if (route.name === 'Gastos') iconName = 'receipt-outline';
-          else if (route.name === 'Nuevo presupuesto') iconName = 'add-circle-outline';
-          else if (route.name === 'Nuevo gasto') iconName = 'cash-outline';
-          else if (route.name === 'Configuración') iconName = 'settings-outline';
-          else if (route.name === 'Resumen') iconName = 'settings-outline';
-          else if (route.name === 'Cambios') iconName = 'settings-outline';
-          else if (route.name === 'Cerrar sesión') iconName = 'log-out-outline';
+          switch (route.name) {
+            case 'Inicio': iconName = 'home-outline'; break;
+            case 'Presupuestos': iconName = 'wallet-outline'; break;
+            case 'Gastos': iconName = 'receipt-outline'; break;
+            case 'Nuevo presupuesto': iconName = 'add-circle-outline'; break;
+            case 'Nuevo gasto': iconName = 'cash-outline'; break;
+            case 'Resumen': iconName = 'stats-chart-outline'; break;
+            case 'Configuración': iconName = 'settings-outline'; break;
+            case 'Cerrar sesión': iconName = 'log-out-outline'; break;
+            default: iconName = 'ellipse-outline';
+          }
           return <Ionicons name={iconName} size={size} color={color} />;
-        },
+        }
       })}
     >
       <Drawer.Screen
@@ -100,43 +94,41 @@ function MainStack({ user }) {
         options={{
           drawerLabel: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image source={{ uri: 'https://your-avatar-url.com' }} style={{ width: 40, height: 40, borderRadius: 20 }} />
-              <Text style={{ marginLeft: 10 }}>{user?.email || 'Nombre de Usuario'}</Text>
+              <Image
+                source={{ uri: 'https://your-avatar-url.com' }}
+                style={{ width: 40, height: 40, borderRadius: 20 }}
+              />
+              <Text style={{ marginLeft: 10 }}>{user?.email || 'Usuario'}</Text>
             </View>
-          ),
+          )
         }}
       />
-
       <Drawer.Screen name="Nuevo presupuesto" component={CreateBudgetScreen} />
       <Drawer.Screen name="Nuevo gasto" component={CreateExpenseScreen} />
       <Drawer.Screen name="Resumen" component={SummaryScreen} />
       <Drawer.Screen name="Configuración" component={ConfigScreen} />
-      
       <Drawer.Screen name="Cerrar sesión" component={LogoutScreen} />
     </Drawer.Navigator>
   );
 }
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
-      setUser(session?.user); // Obtén el usuario de la sesión
+      setUser(session?.user);
       setLoading(false);
     };
-
     getSession();
-
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user); // Actualiza el usuario en el estado
+      setUser(session?.user);
     });
-
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -149,19 +141,21 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
- <RootStack.Navigator screenOptions={{ headerShown: false }}>
-  {session ? (
-    <>
-      <RootStack.Screen name="Main" component={MainStack} />
-      <RootStack.Screen
-        name="BudgetDetailScreen"
-        component={BudgetDetailScreen}
-      />
-    </>
-  ) : (
-    <RootStack.Screen name="AuthScreen" component={AuthScreen} />
-  )}
-</RootStack.Navigator>   </NavigationContainer>
+    <PeriodoProvider>
+      <NavigationContainer>
+        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+          {session ? (
+            <>
+              <RootStack.Screen name="Main">
+                {() => <MainStack user={user} />}
+              </RootStack.Screen>
+              <RootStack.Screen name="BudgetDetailScreen" component={BudgetDetailScreen} />
+            </>
+          ) : (
+            <RootStack.Screen name="AuthScreen" component={AuthScreen} />
+          )}
+        </RootStack.Navigator>
+      </NavigationContainer>
+    </PeriodoProvider>
   );
 }
